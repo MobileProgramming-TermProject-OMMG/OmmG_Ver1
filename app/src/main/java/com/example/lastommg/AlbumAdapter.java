@@ -1,16 +1,21 @@
 package com.example.lastommg;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -18,7 +23,7 @@ import java.util.ArrayList;
 public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.ViewHolder> implements Serializable {
     Context mContext;
     ArrayList<Item> myItems = new ArrayList<Item>();
-
+    int index=0;
     public OnItemClickListener mOnItemClickListener = null;
 
     public interface OnItemClickListener {
@@ -45,7 +50,7 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.ViewHolder> 
 
     public void onBindViewHolder(ViewHolder holder, int position) {
         Item item = myItems.get(position);
-        myItem myItem= new myItem(item.getId(),item.getName(), item.getUri(), item.getPhoneNumber(), item.getLat(),item.getLon(),item.getAddress(),item.getDistance());
+        myItem myItem= new myItem(item.getGood(),item.getId(),item.getName(), item.getUri(), item.getPhoneNumber(), item.getLat(),item.getLon(),item.getAddress(),item.getDistance(),item.getTimestamp().toString());
         Glide.with(mContext)
                 .load(item.getUri())
                 .thumbnail(0.5f)
@@ -72,6 +77,11 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.ViewHolder> 
     public void addItem(Item item) {
         myItems.add(0,item);
         notifyDataSetChanged();
+    }
+    public void delItem(Item item){
+        myItems.remove(item);
+        notifyDataSetChanged();
+        //Toast.makeText(mContext.getApplicationContext(), "게시글이 삭제되었습니다.", Toast.LENGTH_SHORT).show();
     }
 
 

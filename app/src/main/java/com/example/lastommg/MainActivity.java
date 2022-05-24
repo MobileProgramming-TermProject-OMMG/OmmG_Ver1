@@ -71,8 +71,10 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
@@ -84,15 +86,14 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private final String TAG ="로그아웃";
     FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-
     String[] REQUIRED_PERMISSIONS = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
     private ViewPager2 mPager;
     private FragmentStateAdapter pagerAdapter;
     private int num_page = 3;
-    private RecyclerView recyclerView;
+    public RecyclerView recyclerView;
     private View yoon;
     private ItemAdapter itemAdapter;
-    private AlbumAdapter mAlbumAdapter;
+    AlbumAdapter mAlbumAdapter;
     private SwipeRefreshLayout swipeRefreshLayout;
     private String[] PERMISSIONS = {
             Manifest.permission.CAMERA,
@@ -101,13 +102,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             Manifest.permission.ACCESS_COARSE_LOCATION
     };
 
-    private static final int GPS_ENABLE_REQUEST_CODE = 2001;
-    private static final int PERMISSIONS_REQUEST_CODE = 100;
-    private static final int MULTIPLE_PERMISSIONS = 1111;
-    private static final int REQUEST_TAKE_PHOTO = 2222;
-    private static final int REQUEST_TAKE_ALBUM = 3333;
-    private static final int REQUEST_IMAGE_CROP = 4444;
-    private static final int REQUEST_UPLOAD = 5555;
     private Animation fab_open, fab_close;
     private Boolean isFabOpen = false;
     private FloatingActionButton plus, camera, album, upload;
@@ -122,7 +116,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     GeoPoint u_GeoPoint;
     Uri imageUri;
     Uri photoURI, albumURI;
-
+    public static Object context_main;
     AccessToken accessToken = AccessToken.getCurrentAccessToken();
     boolean isLoggedIn = accessToken != null && !accessToken.isExpired();
 
@@ -130,19 +124,15 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         mAlbumAdapter = new AlbumAdapter();
         gpsTracker = new GpsTracker(MainActivity.this);
         latitude = gpsTracker.getLatitude();
         longitude = gpsTracker.getLongitude();
         u_GeoPoint = new GeoPoint(latitude, longitude);
         yoon = findViewById(R.id.plus);
+        context_main=this;
 
-        if (!checkLocationServicesStatus()) {
-            showDialogForLocationServiceSetting();
-        } else {
-
-            checkRunTimePermission();
-        }
 
         mAuth = FirebaseAuth.getInstance();
 
@@ -176,6 +166,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 itemAdapter.setDistance(u_GeoPoint);
                 itemAdapter.notifyDataSetChanged();
                 recyclerView.startLayoutAnimation();
+                int i=itemAdapter.getItemCount();
+                Log.d("개수", Integer.toString(i));
             }
         });
         //시간순
@@ -224,50 +216,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         });
     }
 
-    //GPS
-    void checkRunTimePermission() {
-
-        //런타임 퍼미션 처리
-        // 1. 위치 퍼미션을 가지고 있는지 체크합니다.
-        int hasFineLocationPermission = ContextCompat.checkSelfPermission(MainActivity.this,
-                Manifest.permission.ACCESS_FINE_LOCATION);
-        int hasCoarseLocationPermission = ContextCompat.checkSelfPermission(MainActivity.this,
-                Manifest.permission.ACCESS_COARSE_LOCATION);
-
-
-        if (hasFineLocationPermission == PackageManager.PERMISSION_GRANTED &&
-                hasCoarseLocationPermission == PackageManager.PERMISSION_GRANTED) {
-
-            // 2. 이미 퍼미션을 가지고 있다면
-            // ( 안드로이드 6.0 이하 버전은 런타임 퍼미션이 필요없기 때문에 이미 허용된 걸로 인식합니다.)
-
-
-            // 3.  위치 값을 가져올 수 있음
-
-
-        } else {  //2. 퍼미션 요청을 허용한 적이 없다면 퍼미션 요청이 필요합니다. 2가지 경우(3-1, 4-1)가 있습니다.
-
-            // 3-1. 사용자가 퍼미션 거부를 한 적이 있는 경우에는
-            if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, REQUIRED_PERMISSIONS[0])) {
-
-                // 3-2. 요청을 진행하기 전에 사용자가에게 퍼미션이 필요한 이유를 설명해줄 필요가 있습니다.
-                Toast.makeText(MainActivity.this, "이 앱을 실행하려면 위치 접근 권한이 필요합니다.", Toast.LENGTH_LONG).show();
-                // 3-3. 사용자게에 퍼미션 요청을 합니다. 요청 결과는 onRequestPermissionResult에서 수신됩니다.
-                ActivityCompat.requestPermissions(MainActivity.this, REQUIRED_PERMISSIONS,
-                        PERMISSIONS_REQUEST_CODE);
-
-
-            } else {
-                // 4-1. 사용자가 퍼미션 거부를 한 적이 없는 경우에는 퍼미션 요청을 바로 합니다.
-                // 요청 결과는 onRequestPermissionResult에서 수신됩니다.
-                ActivityCompat.requestPermissions(MainActivity.this, REQUIRED_PERMISSIONS,
-                        PERMISSIONS_REQUEST_CODE);
-            }
-
-        }
-
-    }
-
 
     public String getCurrentAddress(double latitude, double longitude) {
 
@@ -305,38 +253,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     }
 
 
-    //여기부터는 GPS 활성화를 위한 메소드들
-    private void showDialogForLocationServiceSetting() {
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-        builder.setTitle("위치 서비스 비활성화");
-        builder.setMessage("앱을 사용하기 위해서는 위치 서비스가 필요합니다.\n"
-                + "위치 설정을 수정하실래요?");
-        builder.setCancelable(true);
-        builder.setPositiveButton("설정", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int id) {
-                Intent callGPSSettingIntent
-                        = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                startActivityForResult(callGPSSettingIntent, GPS_ENABLE_REQUEST_CODE);
-            }
-        });
-        builder.setNegativeButton("취소", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int id) {
-                dialog.cancel();
-            }
-        });
-        builder.create().show();
-    }
-
-
-    public boolean checkLocationServicesStatus() {
-        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-
-        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
-                || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-    }
 
 
     private void signOut() {
@@ -414,6 +330,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
+                itemAdapter.removeAllItem();
                 itemAdapter.notifyDataSetChanged();
                 recyclerView.startLayoutAnimation();
                 swipeRefreshLayout.setRefreshing(false);
@@ -436,7 +353,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         camera.setOnClickListener((View.OnClickListener) this);
         album.setOnClickListener((View.OnClickListener) this);
         upload.setOnClickListener((View.OnClickListener) this);
-        checkPermission();
         //152까지
 
         db.collection("items").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
@@ -458,407 +374,33 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
     }
 
-    private void checkPermission() {
-        int result;
-        List<String> permissionList = new ArrayList<>();
-        for (String pm : PERMISSIONS) {
-            result = ContextCompat.checkSelfPermission(this, pm);
-            if (result != PackageManager.PERMISSION_GRANTED) {
-                permissionList.add(pm);
-            }
-        }
-
-        if (!permissionList.isEmpty()) {
-            ActivityCompat.requestPermissions(this, permissionList.toArray(new String[permissionList.size()]), MULTIPLE_PERMISSIONS);
-        }
-    }
-
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PERMISSIONS_REQUEST_CODE && grantResults.length == REQUIRED_PERMISSIONS.length) {
-            // 요청 코드가 PERMISSIONS_REQUEST_CODE 이고, 요청한 퍼미션 개수만큼 수신되었다면
-
-            boolean check_result = true;
-
-
-            // 모든 퍼미션을 허용했는지 체크합니다.
-
-            for (int result : grantResults) {
-                if (result != PackageManager.PERMISSION_GRANTED) {
-                    check_result = false;
-                    break;
-                }
-            }
-
-
-            if (check_result) {
-
-                //위치 값을 가져올 수 있음
-                ;
-            } else {
-                // 거부한 퍼미션이 있다면 앱을 사용할 수 없는 이유를 설명해주고 앱을 종료합니다.2 가지 경우가 있습니다.
-
-                if (ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[0])
-                        || ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[1])) {
-
-                    Toast.makeText(MainActivity.this, "퍼미션이 거부되었습니다. 앱을 다시 실행하여 퍼미션을 허용해주세요.", Toast.LENGTH_LONG).show();
-                    finish();
-
-
-                } else {
-
-                    Toast.makeText(MainActivity.this, "퍼미션이 거부되었습니다. 설정(앱 정보)에서 퍼미션을 허용해야 합니다. ", Toast.LENGTH_LONG).show();
-
-                }
-            }
-        }
-        if (requestCode == MULTIPLE_PERMISSIONS) {
-            if (grantResults.length > 0) {
-                for (int i = 0; i < permissions.length; i++) {
-                    if (permissions[i].equals(this.PERMISSIONS[0])) {
-                        if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
-                            if ((ActivityCompat.shouldShowRequestPermissionRationale(this, PERMISSIONS[0]))) {
-                                new AlertDialog.Builder(this)
-                                        .setTitle("알림")
-                                        .setMessage("카메라 권한이 거부되었습니다. 사용을 원하시면 설정에서 해당 권한을 직접 허용하셔야 합니다.")
-                                        .setNeutralButton("설정", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialogInterface, int i) {
-                                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                                intent.setData(Uri.parse("package:" + getPackageName()));
-                                                startActivity(intent);
-                                            }
-                                        })
-                                        .setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialogInterface, int i) {
-                                                finish();
-                                            }
-                                        })
-                                        .setCancelable(false)
-                                        .create()
-                                        .show();
-                            }
-                        }
-                    } else if (permissions[i].equals(this.PERMISSIONS[1])) {
-                        if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
-                            if ((ActivityCompat.shouldShowRequestPermissionRationale(this, PERMISSIONS[1]))) {
-                                new AlertDialog.Builder(this)
-                                        .setTitle("알림")
-                                        .setMessage("저장소 권한이 거부되었습니다. 사용을 원하시면 설정에서 해당 권한을 직접 허용하셔야 합니다.")
-                                        .setNeutralButton("설정", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialogInterface, int i) {
-                                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                                intent.setData(Uri.parse("package:" + getPackageName()));
-                                                startActivity(intent);
-                                            }
-                                        })
-                                        .setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialogInterface, int i) {
-                                                finish();
-                                            }
-                                        })
-                                        .setCancelable(false)
-                                        .create()
-                                        .show();
-                            }
-                        }
-                    } else if (permissions[i].equals(this.PERMISSIONS[2])) {
-                        if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
-                            if ((ActivityCompat.shouldShowRequestPermissionRationale(this, PERMISSIONS[2]))) {
-                                new AlertDialog.Builder(this)
-                                        .setTitle("알림")
-                                        .setMessage("위치 권한이 거부되었습니다. 사용을 원하시면 설정에서 해당 권한을 직접 허용하셔야 합니다.")
-                                        .setNeutralButton("설정", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialogInterface, int i) {
-                                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                                intent.setData(Uri.parse("package:" + getPackageName()));
-                                                startActivity(intent);
-                                            }
-                                        })
-                                        .setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialogInterface, int i) {
-                                                finish();
-                                            }
-                                        })
-                                        .setCancelable(false)
-                                        .create()
-                                        .show();
-                            }
-                        } else if (permissions[i].equals(this.PERMISSIONS[3])) {
-                            if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
-                                if ((ActivityCompat.shouldShowRequestPermissionRationale(this, PERMISSIONS[3]))) {
-                                    new AlertDialog.Builder(this)
-                                            .setTitle("알림")
-                                            .setMessage("위치 권한이 거부되었습니다. 사용을 원하시면 설정에서 해당 권한을 직접 허용하셔야 합니다.")
-                                            .setNeutralButton("설정", new DialogInterface.OnClickListener() {
-                                                @Override
-                                                public void onClick(DialogInterface dialogInterface, int i) {
-                                                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                                    intent.setData(Uri.parse("package:" + getPackageName()));
-                                                    startActivity(intent);
-                                                }
-                                            })
-                                            .setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                                                @Override
-                                                public void onClick(DialogInterface dialogInterface, int i) {
-                                                    finish();
-                                                }
-                                            })
-                                            .setCancelable(false)
-                                            .create()
-                                            .show();
-                                }
-                            }
-                        }
-                    }
-                    return;
-                }
-            }
-        }
-    }
-
 
     public void onClick(View v) {
         int id = v.getId();
         switch (id) {
             case R.id.plus:
                 anim();
+                Intent post = new Intent(getApplicationContext(), PostActivity.class);
+                startActivity(post);
                 //Toast.makeText(this, "plus", Toast.LENGTH_SHORT).show();
                 break;
             case R.id.camera:
                 anim();
                 //Toast.makeText(this, "camera", Toast.LENGTH_SHORT).show();
-                captureCamera();
+                //captureCamera();
                 break;
             case R.id.album:
                 anim();
                 //Toast.makeText(this, "album", Toast.LENGTH_SHORT).show();
-                getAlbum();
+                //getAlbum();
                 break;
             case R.id.upload:
                 anim();
                 //Toast.makeText(this, "upload", Toast.LENGTH_SHORT).show();
-                loadAlbum();
+                //loadAlbum();
                 break;
         }
     }
-
-    private void captureCamera() {
-        String state = Environment.getExternalStorageState();
-        // 외장 메모리 검사
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-
-            if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-                File photoFile = null;
-                try {
-                    photoFile = createImageFile();
-                } catch (IOException ex) {
-                    Log.e("captureCamera Error", ex.toString());
-                }
-                if (photoFile != null) {
-                    // getUriForFile의 두 번째 인자는 Manifest provider의 authorites와 일치해야 함
-
-                    Uri providerURI = FileProvider.getUriForFile(this, getPackageName(), photoFile);
-                    imageUri = providerURI;
-
-                    // 인텐트에 전달할 때는 FileProvier의 Return값인 content://로만!!, providerURI의 값에 카메라 데이터를 넣어 보냄
-                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, providerURI);
-
-                    startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
-                }
-            }
-        } else {
-            Toast.makeText(this, "저장공간이 접근 불가능한 기기입니다", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    public File createImageFile() throws IOException {
-        // Create an image file name
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmm").format(new Date());
-        String imageFileName = "JPEG_" + timeStamp + ".jpg";
-        File imageFile = null;
-        File storageDir = new File(Environment.getExternalStorageDirectory() + "/Pictures", "ommg");
-
-        if (!storageDir.exists()) {
-            Log.i("mCurrentPhotoPath1", storageDir.toString());
-            storageDir.mkdirs();
-        }
-        imageFile = new File(storageDir, imageFileName);
-        mCurrentPhotoPath = imageFile.getAbsolutePath();
-
-        return imageFile;
-    }
-
-    //CROP 용
-    private void getAlbum() {
-        Log.i("getAlbum", "Call");
-        Intent intent = new Intent(Intent.ACTION_PICK);
-        intent.setType("image/*");
-        intent.setType(MediaStore.Images.Media.CONTENT_TYPE);
-        startActivityForResult(intent, REQUEST_TAKE_ALBUM);
-    }
-
-    //UPLOAD 용
-    private void loadAlbum() {
-        Log.i("loadAlbum", "Call");
-        Intent intent = new Intent(Intent.ACTION_PICK);
-        intent.setType(MediaStore.Images.Media.CONTENT_TYPE);
-        startActivityForResult(intent, REQUEST_UPLOAD);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        switch (requestCode) {
-            case REQUEST_TAKE_PHOTO:
-                if (resultCode == Activity.RESULT_OK) {
-                    try {
-                        Log.i("REQUEST_TAKE_PHOTO", "OK");
-                        galleryAddPic();
-
-                        //iv_view.setImageURI(imageUri);
-                    } catch (Exception e) {
-                        Log.e("REQUEST_TAKE_PHOTO", e.toString());
-                    }
-                } else {
-                    Toast.makeText(MainActivity.this, "촬영을 취소하였습니다.", Toast.LENGTH_SHORT).show();
-                }
-                break;
-
-            case GPS_ENABLE_REQUEST_CODE: //사용자가 GPS 활성 시켰는지 검사
-                if (checkLocationServicesStatus()) {
-                    if (checkLocationServicesStatus()) {
-                        Log.d("@@@", "onActivityResult : GPS 활성화 되있음");
-                        checkRunTimePermission();
-                        return;
-                    }
-                }
-                break;
-            case REQUEST_TAKE_ALBUM:
-                if (resultCode == Activity.RESULT_OK) {
-                    if (data.getData() != null) {
-                        try {
-                            File albumFile = null;
-                            albumFile = createImageFile();
-                            photoURI = data.getData();
-                            albumURI = Uri.fromFile(albumFile);
-                            cropImage();
-                        } catch (Exception e) {
-                            Log.e("TAKE_ALBUM_SINGLE ERROR", e.toString());
-                        }
-                    }
-                }
-                break;
-
-            case REQUEST_IMAGE_CROP:
-                if (resultCode == Activity.RESULT_OK) {
-                    galleryAddPic();
-                    //iv_view.setImageURI(albumURI);
-                }
-                break;
-
-            case REQUEST_UPLOAD:
-                if (resultCode == Activity.RESULT_OK) {
-                    String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmm").format(new Date());
-                    Timestamp timestamp=new Timestamp(new Date());
-                    String imageFileName = "JPEG_" + timeStamp + ".jpg";
-                    final String[] email = new String[1];
-                    Uri file = data.getData();
-                    StorageReference storageRef = storage.getReference();
-                    StorageReference riversRef = storageRef.child("image/" + imageFileName);
-                    UploadTask uploadTask = riversRef.putFile(file);
-
-                    try {
-                        InputStream in = getContentResolver().openInputStream(data.getData());
-                        Bitmap img = BitmapFactory.decodeStream(in);
-                        in.close();
-                        //iv_view.setImageBitmap(img);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-
-                    uploadTask.addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception e) {
-                            Toast.makeText(MainActivity.this, "사진 업로드가 실패하였습니다.", Toast.LENGTH_SHORT).show();
-                        }
-                    }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                        @Override
-                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                            FirebaseStorage storage = FirebaseStorage.getInstance();
-                            StorageReference storageReference = storage.getReference();
-                            StorageReference pathReference = storageReference.child("image");
-                            if (pathReference == null) {
-                                Toast.makeText(MainActivity.this, "저장소에사진이없습니다.", Toast.LENGTH_SHORT).show();
-                            } else {
-                                StorageReference submitProfile = storageReference.child("image/" + imageFileName);
-                                submitProfile.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                                    @Override
-                                    public void onSuccess(Uri uri) {
-                                        address=getCurrentAddress(u_GeoPoint.getLatitude(), u_GeoPoint.getLongitude());
-                                        u_GeoPoint = new GeoPoint(latitude, longitude);
-                                        Item item = new Item(mAuth.getUid(),imageFileName, uri.toString(), "010-9913-2992", u_GeoPoint,address,0.0,timestamp);
-                                        itemAdapter.addItem(item);
-                                        if(item.getId().equals(mAuth.getUid())) {
-                                            mAlbumAdapter.addItem(item);
-                                            Log.i("aaaaaa", String.valueOf(mAlbumAdapter.getItemCount()));
-                                        }
-                                        Log.i("확인", item.getGeoPoint().toString());
-                                        db.collection("items").document(imageFileName).set(item);
-                                    }
-                                }).addOnFailureListener(new OnFailureListener() {
-                                    @Override
-                                    public void onFailure(@NonNull Exception e) {
-                                    }
-                                });
-                            }
-                            itemAdapter.notifyDataSetChanged();
-                            Toast.makeText(MainActivity.this, "사진 업로드가 성공하였습니다.", Toast.LENGTH_SHORT).show();
-                            recyclerView.startLayoutAnimation();
-                        }
-                    });
-                }
-                break;
-        }
-    }
-
-    private void galleryAddPic() {
-        Log.i("galleryAddPic", "Call");
-        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-        // 해당 경로에 있는 파일을 객체화(새로 파일을 만든다는 것으로 이해하면 안 됨)
-        File f = new File(mCurrentPhotoPath);
-        Uri contentUri = Uri.fromFile(f);
-        mediaScanIntent.setData(contentUri);
-        sendBroadcast(mediaScanIntent);
-        Toast.makeText(this, "사진이 앨범에 저장되었습니다.", Toast.LENGTH_SHORT).show();
-    }
-
-    // 카메라 전용 크랍
-    public void cropImage() {
-        Log.i("cropImage", "Call");
-        Log.i("cropImage", "photoURI : " + photoURI + " / albumURI : " + albumURI);
-
-        Intent cropIntent = new Intent("com.android.camera.action.CROP");
-
-        // 50x50픽셀미만은 편집할 수 없다는 문구 처리 + 갤러리, 포토 둘다 호환하는 방법
-        cropIntent.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-        cropIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        cropIntent.setDataAndType(photoURI, "image/*");
-        //cropIntent.putExtra("outputX", 200); // crop한 이미지의 x축 크기, 결과물의 크기
-        //cropIntent.putExtra("outputY", 200); // crop한 이미지의 y축 크기
-        cropIntent.putExtra("aspectX", 1); // crop 박스의 x축 비율, 1&1이면 정사각형
-        cropIntent.putExtra("aspectY", 1); // crop 박스의 y축 비율
-        cropIntent.putExtra("scale", true);
-        cropIntent.putExtra("output", albumURI); // 크랍된 이미지를 해당 경로에 저장
-        startActivityForResult(cropIntent, REQUEST_IMAGE_CROP);
-    }
-
     private void anim() {
         if (isFabOpen) {
             camera.startAnimation(fab_close);

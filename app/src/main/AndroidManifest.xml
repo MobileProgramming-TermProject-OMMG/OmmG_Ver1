@@ -26,7 +26,9 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.LastOmmg"
         android:name=".App">
-
+        <activity
+            android:name=".PostActivity"
+            android:exported="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.example.lastommg"
@@ -84,6 +86,9 @@
         <meta-data android:name="com.kakao.sdk.AppKey"
             android:value="@string/kakao_app_key" />
 
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/google_map_key"/>
         <activity
             android:name="com.kakao.sdk.auth.AuthCodeHandlerActivity"
             android:exported="true">

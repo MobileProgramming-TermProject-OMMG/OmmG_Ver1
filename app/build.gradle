@@ -75,6 +75,8 @@ dependencies {
     implementation 'com.kakao.sdk:usermgmt:1.30.6'
     implementation group: 'com.kakao.sdk', name: 'usermgmt', version: '1.27.0'
     implementation 'com.facebook.android:facebook-android-sdk:latest.release'
+    implementation 'com.google.android.gms:play-services-maps:17.0.0'
+    implementation 'com.google.android.gms:play-services-location:17.0.0'
 
 
 

@@ -9,6 +9,7 @@ import com.google.firebase.firestore.GeoPoint;
 import java.io.Serializable;
 
 public class Item implements Serializable {
+    int good=0;
     String id;
     String uri;
     String name;
@@ -21,8 +22,9 @@ public class Item implements Serializable {
 
     }
 
-    public Item(String id,String name, String uri, String phoneNumber,GeoPoint geoPoint,String address,double distance,Timestamp timestamp)  {
+    public Item(int good,String id,String name, String uri, String phoneNumber,GeoPoint geoPoint,String address,double distance,Timestamp timestamp)  {
        // this.resId = resId;
+        this.good=good;
         this.id=id;
         this.name = name;
         this.uri=uri;
@@ -33,11 +35,18 @@ public class Item implements Serializable {
         this.timestamp=timestamp;
     }
 
+
+    public int getGood() {
+        return good;
+    }
+    public void setGood() {
+        this.good=good;
+    }
     public String getId() {
         return id;
     }
     public void setId() {
-        this.name = id;
+        this.id = id;
     }
     public String getName() {
         return name;

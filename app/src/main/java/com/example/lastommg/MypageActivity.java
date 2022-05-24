@@ -216,5 +216,7 @@ public class MypageActivity extends AppCompatActivity implements AlbumAdapter.On
         startActivity(intent, optionsCompat.toBundle());
     }
 
+
+
 }
 
